@@ -131,7 +131,7 @@ export async function runAgentTurn(args: {
   onAssistantMessage?: (content: string) => void
   onProgressMessage?: (content: string) => void
 }): Promise<ChatMessage[]> {
-  const maxSteps = args.maxSteps ?? 6
+  const maxSteps = args.maxSteps
   let messages = args.messages
   let emptyResponseRetryCount = 0
   let recoverableThinkingRetryCount = 0
@@ -148,7 +148,7 @@ export async function runAgentTurn(args: {
     ]
   }
 
-  for (let step = 0; step < maxSteps; step++) {
+  for (let step = 0; maxSteps == null || step < maxSteps; step++) {
     const next = await args.model.next(messages)
 
     if (next.type === 'assistant') {

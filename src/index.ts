@@ -136,7 +136,6 @@ async function main(): Promise<void> {
           messages,
           cwd: process.cwd(),
           permissions,
-          maxSteps: 8,
         })
       } catch (error) {
         const message =

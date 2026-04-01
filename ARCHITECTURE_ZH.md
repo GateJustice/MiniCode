@@ -43,7 +43,7 @@ MiniCode 优先保留这些能力：
 ## MiniCode 当前实现
 
 - `src/index.ts`: CLI 入口
-- `src/agent-loop.ts`: 有最大步数限制的多轮工具调用循环
+- `src/agent-loop.ts`: 多轮工具调用循环
 - `src/tool.ts`: 注册、校验、执行
 - `src/tools/*`: `list_files` / `grep_files` / `read_file` / `write_file` / `edit_file` / `patch_file` / `modify_file` / `run_command` / `load_skill`
 - `src/config.ts`: 使用独立的 `~/.mini-code`

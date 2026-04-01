@@ -555,7 +555,6 @@ async function handleInput(
       messages: args.messages,
       cwd: args.cwd,
       permissions: args.permissions,
-      maxSteps: 8,
       onAssistantMessage(content) {
         pushTranscriptEntry(state, {
           kind: 'assistant',

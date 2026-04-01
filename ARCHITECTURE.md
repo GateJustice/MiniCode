@@ -41,7 +41,7 @@ In other words, MiniCode is a smaller, more controllable terminal coding assista
 ## Current implementation
 
 - `src/index.ts`: CLI entry
-- `src/agent-loop.ts`: multi-turn tool-calling loop with a maximum step limit
+- `src/agent-loop.ts`: multi-turn tool-calling loop
 - `src/tool.ts`: registration, validation, execution
 - `src/tools/*`: `list_files` / `grep_files` / `read_file` / `write_file` / `edit_file` / `patch_file` / `modify_file` / `run_command` / `load_skill`
 - `src/config.ts`: uses dedicated `~/.mini-code`
