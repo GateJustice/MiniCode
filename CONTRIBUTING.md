@@ -158,5 +158,6 @@ A good PR description should briefly explain:
 - how it stays lightweight
 - how it aligns with Claude Code's design direction
 - how it was verified
+- how reviewers can reproduce and verify the change locally
 
 Thanks again for helping improve MiniCode while keeping the project focused.
