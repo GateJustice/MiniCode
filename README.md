@@ -59,6 +59,12 @@ The project is intentionally compact, so the control flow, tool model, and TUI b
 - Open [docs/index.html](./docs/index.html) in a browser for a visual product overview.
 - GitHub Pages (recommended): `https://liumengxuan04.github.io/MiniCode/`
 
+## Multi-language Versions
+
+- TypeScript (this repo): `https://github.com/LiuMengxuan04/MiniCode`
+- Rust version: `https://github.com/harkerhand/MiniCode-rs`
+- Python version: coming soon
+
 ## Why MiniCode
 
 MiniCode is a good fit if you want:
