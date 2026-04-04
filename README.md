@@ -1,7 +1,21 @@
 # MiniCode
 
 <p align="center">
-  <img src="./docs/logo.svg" alt="MiniCode Logo" width="120" />
+  <img src="./docs/logo.svg" alt="MiniCode Logo" width="180" />
+</p>
+
+<h2 align="center">MiniCode</h2>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Editor-Minicode-D97757?style=for-the-badge" alt="Editor: Minicode" />
+  <img src="https://img.shields.io/badge/%23minicode-Project-B85C3F?style=for-the-badge" alt="#minicode" />
+  <img src="https://img.shields.io/badge/%23lightweight-Focus-F0EBE1?style=for-the-badge&labelColor=8B8B8B" alt="#lightweight" />
+</p>
+
+---
+
+<p align="center">
+  A lightweight, highly efficient coding tool. Designed for speed, built for simplicity.
 </p>
 
 [简体中文](./README.zh-CN.md) | [Architecture](./ARCHITECTURE.md) | [Contributing](./CONTRIBUTING.md) | [Roadmap](./ROADMAP.md) | [Learn Claude Code Design Through MiniCode](./CLAUDE_CODE_PATTERNS.md) | [License](./LICENSE)
