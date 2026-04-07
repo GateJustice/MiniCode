@@ -44,6 +44,12 @@ MiniCode 围绕一个实用的 terminal-first agent loop 构建：
 - Rust 版本：[MiniCode-rs（最新）](https://github.com/harkerhand/MiniCode-rs/tree/master)
 - Python 版本：[MiniCode-Python](https://github.com/QUSETIONS/MiniCode-Python)
 
+## 分支版本特色
+
+- TypeScript 版本：MiniCode 核心工作流、文档和产品展示页的参考实现。更明确的分支特色仍在沉淀中。
+- Rust 版本：历史记录保存在工作目录内，因此迁移或移动项目位置时，可以更方便地保留当前项目的 MiniCode 上下文。
+- Python 版本：面向 Python 生态的原生实现分支。更明确的分支特色仍在沉淀中。
+
 ## 目录
 
 - [产品介绍展示页](#产品介绍展示页)

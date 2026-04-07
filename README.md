@@ -44,6 +44,12 @@ The project is intentionally compact, so the control flow, tool model, and TUI b
 - Rust version: [MiniCode-rs (latest)](https://github.com/harkerhand/MiniCode-rs/tree/master)
 - Python version: [MiniCode-Python](https://github.com/QUSETIONS/MiniCode-Python)
 
+## Branch Highlights
+
+- TypeScript version: the reference implementation for MiniCode's core workflow, documentation, and product showcase. More branch-specific features are still being shaped.
+- Rust version: keeps conversation history inside the working directory, making it easier to move or migrate a project without losing its local MiniCode context.
+- Python version: a Python-native implementation branch. More branch-specific features are still being shaped.
+
 ## Table of Contents
 
 - [Product Showcase Page](#product-showcase-page)
