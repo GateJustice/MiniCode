@@ -10,6 +10,8 @@ Pull requests are welcome, especially when they align with the contribution guid
 
 ### 1. Model-aware context management
 
+**Status: in progress.**
+
 This is the most important missing runtime capability.
 
 It includes:
@@ -23,15 +25,9 @@ This work matters because long-session stability depends on it. It is also one o
 
 ### 2. API retry and backoff
 
-MiniCode should handle transient API failures more gracefully.
+**Status: implemented.** The main Anthropic adapter retries on 429 and 5xx with exponential backoff and honors `Retry-After` when present. The companion [Python](./external/MiniCode-Python/) and [Rust](./external/MiniCode-rs/) ports follow the same behavior.
 
-This includes:
-
-- retry on 429 and 5xx responses
-- exponential backoff
-- support for `Retry-After` when available
-
-Without this, provider-side instability leaks too directly into the main interaction loop.
+Possible follow-ups include a more uniform configurable retry policy, richer observability, or applying the same policy consistently across additional provider code paths.
 
 ### 3. Session persistence and resume
 
@@ -47,11 +43,13 @@ This is important for real-world usage and longer task execution.
 
 ### 4. Multi-language implementation branches
 
+**Status: Python and Rust companion implementations are available; Go remains exploratory.**
+
 Another important direction is to explore parallel implementations of MiniCode in other languages, especially:
 
-- Python
-- Go
-- Rust
+- Python (companion repo available)
+- Go (no formal companion implementation yet)
+- Rust (companion repo available)
 
 This is particularly valuable for the learning side of the project.
 
@@ -62,7 +60,7 @@ The goal is not to fragment the main codebase immediately. The goal is to encour
 - readable agent loop and tool model
 - educational value for contributors studying different ecosystems
 
-If you are interested in building or maintaining a Python, Go, or Rust variant, contributions and direct collaboration are welcome.
+If you are interested in maintaining or extending the Python or Rust variants, or starting a Go direction, contributions and direct collaboration are welcome.
 
 ## P1
 
