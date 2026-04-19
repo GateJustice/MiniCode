@@ -1,6 +1,9 @@
 import type { ToolRegistry } from './tool.js'
-import type { ChatMessage, ModelAdapter } from './types.js'
+import type { ChatMessage, CompressionResult, ModelAdapter } from './types.js'
 import type { PermissionManager } from './permissions.js'
+import { microcompact } from './compact/microcompact.js'
+import { autoCompact } from './compact/auto-compact.js'
+import { computeContextStats } from './utils/token-estimator.js'
 
 function isEmptyAssistantResponse(content: string): boolean {
   return content.trim().length === 0
@@ -71,12 +74,16 @@ export async function runAgentTurn(args: {
   cwd: string
   permissions?: PermissionManager
   maxSteps?: number
+  modelName?: string
   onToolStart?: (toolName: string, input: unknown) => void
   onToolResult?: (toolName: string, output: string, isError: boolean) => void
   onAssistantMessage?: (content: string) => void
   onProgressMessage?: (content: string) => void
+  onAutoCompact?: (result: CompressionResult) => void
+  onContextStats?: (stats: import('./utils/token-estimator.js').ContextStats) => void
 }): Promise<ChatMessage[]> {
   const maxSteps = args.maxSteps
+  const modelName = args.modelName ?? ''
   let messages = args.messages
   let emptyResponseRetryCount = 0
   let recoverableThinkingRetryCount = 0
@@ -94,6 +101,26 @@ export async function runAgentTurn(args: {
   }
 
   for (let step = 0; maxSteps == null || step < maxSteps; step++) {
+    // Microcompact: lightweight tool_result cleanup on every step
+    if (modelName) {
+      messages = microcompact(messages, modelName)
+    }
+
+    // AutoCompact: LLM-based compression when context is critical (first step only)
+    if (step === 0 && modelName) {
+      const stats = computeContextStats(messages, modelName)
+      args.onContextStats?.(stats)
+      if (stats.warningLevel === 'critical' || stats.warningLevel === 'blocked') {
+        const result = await autoCompact(messages, modelName, args.model)
+        if (result) {
+          messages = result.messages
+          args.onAutoCompact?.(result)
+          const updatedStats = computeContextStats(messages, modelName)
+          args.onContextStats?.(updatedStats)
+        }
+      }
+    }
+
     const next = await args.model.next(messages)
 
     if (next.type === 'assistant') {

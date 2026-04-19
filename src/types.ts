@@ -16,6 +16,12 @@ export type ChatMessage =
       content: string
       isError: boolean
     }
+  | {
+      role: 'context_summary'
+      content: string
+      compressedCount: number
+      timestamp: number
+    }
 
 export type ToolCall = {
   id: string
@@ -46,4 +52,12 @@ export type AgentStep =
 
 export interface ModelAdapter {
   next(messages: ChatMessage[]): Promise<AgentStep>
+}
+
+export type CompressionResult = {
+  messages: ChatMessage[]
+  summary: Extract<ChatMessage, { role: 'context_summary' }>
+  removedCount: number
+  tokensBefore: number
+  tokensAfter: number
 }
