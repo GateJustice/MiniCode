@@ -105,6 +105,11 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     usage: '/cmd [cwd::]<command> [args...]',
     description: 'Run an allowed development command directly, optionally in another directory.',
   },
+  {
+    name: '/compact',
+    usage: '/compact',
+    description: 'Compress conversation context to free up context window space.',
+  },
 ]
 
 export function formatSlashCommands(): string {

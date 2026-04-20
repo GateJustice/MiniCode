@@ -7,6 +7,7 @@ export {
   getTranscriptWindowSize,
   hideCursor,
   renderBanner,
+  renderContextBadge,
   renderFooterBar,
   renderInputPrompt,
   renderPanel,
