@@ -15,6 +15,7 @@ import {
   PermissionRequest,
 } from './permissions.js'
 import { buildSystemPrompt } from './prompt.js'
+import { saveSession, loadSession, clearSession } from './session.js'
 import { parseInputChunk, type ParsedInputEvent } from './tui/input-parser.js'
 import {
   clearScreen,
@@ -600,6 +601,7 @@ async function handleInput(
       if (result) {
         args.messages.length = 0
         args.messages.push(...result.messages)
+        await saveSession(args.cwd, args.messages)
         const savedPct = Math.round((1 - result.tokensAfter / result.tokensBefore) * 100)
         const savedTokens = result.tokensBefore - result.tokensAfter
         state.compressionStatus = `ctx -${savedPct}% (saved ${savedTokens >= 1000 ? `${Math.round(savedTokens / 1000)}K` : savedTokens} tokens)`
@@ -632,6 +634,63 @@ async function handleInput(
         rerender()
       }, 5000)
     }
+    return false
+  }
+
+  if (input === '/resume') {
+    const loaded = await loadSession(args.cwd)
+    if (!loaded || loaded.length === 0) {
+      pushTranscriptEntry(state, {
+        kind: 'assistant',
+        body: 'No saved session found.',
+      })
+      return false
+    }
+    const systemContent =
+      args.messages[0]?.role === 'system' ? args.messages[0].content : ''
+    await refreshSystemPrompt(args)
+    args.messages.length = 0
+    args.messages.push({ role: 'system', content: systemContent })
+    args.messages.push(...loaded)
+    for (const msg of loaded) {
+      if (msg.role === 'user') {
+        pushTranscriptEntry(state, { kind: 'user', body: msg.content })
+      } else if (msg.role === 'assistant') {
+        pushTranscriptEntry(state, { kind: 'assistant', body: msg.content })
+      } else if (msg.role === 'assistant_tool_call') {
+        pushTranscriptEntry(state, {
+          kind: 'tool',
+          toolName: msg.toolName,
+          status: 'success',
+          body: summarizeToolInput(msg.toolName, msg.input),
+        })
+      } else if (msg.role === 'tool_result') {
+        // tool results are folded into the tool entry above
+      } else if (msg.role === 'context_summary') {
+        pushTranscriptEntry(state, {
+          kind: 'assistant',
+          body: `[Context summary: ${msg.compressedCount} messages compressed]`,
+        })
+      }
+    }
+    pushTranscriptEntry(state, {
+      kind: 'assistant',
+      body: `Session resumed (${loaded.length} messages loaded).`,
+    })
+    state.transcriptScrollOffset = 0
+    return false
+  }
+
+  if (input === '/new') {
+    await clearSession(args.cwd)
+    state.transcript = []
+    args.messages.length = 0
+    await refreshSystemPrompt(args)
+    state.transcriptScrollOffset = 0
+    pushTranscriptEntry(state, {
+      kind: 'assistant',
+      body: 'Session cleared. Starting fresh.',
+    })
     return false
   }
 
@@ -872,6 +931,7 @@ async function handleInput(
     })
     args.messages.length = 0
     args.messages.push(...nextMessages)
+    await saveSession(args.cwd, args.messages)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     args.messages.push({
@@ -955,6 +1015,14 @@ export async function runTtyApp(args: TtyAppArgs): Promise<void> {
     permissionArgs.messages[0]?.role !== 'system'
   ) {
     await refreshSystemPrompt(permissionArgs)
+  }
+
+  const savedSession = await loadSession(args.cwd)
+  if (savedSession && savedSession.length > 0) {
+    pushTranscriptEntry(state, {
+      kind: 'assistant',
+      body: `Session found (${savedSession.length} messages). Type /resume to continue or /new to start fresh.`,
+    })
   }
 
   renderScreen(permissionArgs, state)

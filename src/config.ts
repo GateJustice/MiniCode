@@ -41,6 +41,7 @@ export const MINI_CODE_HISTORY_PATH = path.join(MINI_CODE_DIR, 'history.json')
 export const MINI_CODE_PERMISSIONS_PATH = path.join(MINI_CODE_DIR, 'permissions.json')
 export const MINI_CODE_MCP_PATH = path.join(MINI_CODE_DIR, 'mcp.json')
 export const MINI_CODE_MCP_TOKENS_PATH = path.join(MINI_CODE_DIR, 'mcp-tokens.json')
+export const MINI_CODE_SESSIONS_DIR = path.join(MINI_CODE_DIR, 'sessions')
 export const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 export const PROJECT_MCP_PATH = path.join(process.cwd(), '.mcp.json')
 
