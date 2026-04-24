@@ -36,6 +36,10 @@ type ParseResult = {
   rest: string
 }
 
+function isMultilinePasteChunk(input: string): boolean {
+  return /[\r\n]/.test(input) && /[^\r\n]/.test(input)
+}
+
 const ESC = '\u001b'
 const CTRL_CHAR_TO_NAME: Record<string, string> = {
   '\u0001': 'a',
@@ -185,7 +189,9 @@ export function parseInputChunk(
   previousRest: string,
   chunk: Buffer | string,
 ): ParseResult {
-  const input = previousRest + String(chunk)
+  const chunkText = String(chunk)
+  const input = previousRest + chunkText
+  const treatNewlinesAsText = isMultilinePasteChunk(chunkText)
   const events: ParsedInputEvent[] = []
   let index = 0
 
@@ -214,7 +220,11 @@ export function parseInputChunk(
     if (!char) break
 
     if (char === '\r' || char === '\n') {
-      events.push({ kind: 'key', name: 'return', ctrl: false, meta: false })
+      if (treatNewlinesAsText) {
+        events.push({ kind: 'text', text: '\n', ctrl: false, meta: false })
+      } else {
+        events.push({ kind: 'key', name: 'return', ctrl: false, meta: false })
+      }
       if (
         (char === '\r' && remaining[1] === '\n') ||
         (char === '\n' && remaining[1] === '\r')
