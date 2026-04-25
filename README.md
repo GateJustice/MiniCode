@@ -63,6 +63,7 @@ The project is intentionally compact, so the control flow, tool model, and TUI b
 - [Skills and MCP Usage](#skills-and-mcp-usage)
 - [Star History](#star-history)
 - [Project Structure](#project-structure)
+- [Code Size](#code-size)
 - [Architecture Docs](#architecture-docs)
 - [Contributing](#contributing)
 - [Roadmap](#roadmap)
@@ -514,6 +515,17 @@ If you want to study the project as a learning resource, continue with:
 - `src/tui/*`: terminal UI modules
 - `src/config.ts`: runtime configuration loading
 - `src/install.ts`: interactive installer
+
+## Code Size
+
+Current core implementation size is about **7,874 lines**.
+
+Counting scope:
+
+- included: core TypeScript source, built-in tools, config, MCP, sessions, compaction, adapters, permissions, and `bin/minicode`
+- excluded: docs, tests, `external/`, `node_modules/`, and TUI files (`src/tui/`, `src/tty-app.ts`, `src/ui.ts`)
+
+If `src/tty-app.ts` and `src/ui.ts` are included while still excluding `src/tui/`, the total is about **9,767 lines**.
 
 ## Architecture Docs
 

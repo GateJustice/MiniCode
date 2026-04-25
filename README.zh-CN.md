@@ -63,6 +63,7 @@ MiniCode 围绕一个实用的 terminal-first agent loop 构建：
 - [Skills 与 MCP 用法](#skills-与-mcp-用法)
 - [Star 趋势](#star-趋势)
 - [项目结构](#项目结构)
+- [代码规模](#代码规模)
 - [架构文档](#架构文档)
 - [贡献规范](#贡献规范)
 - [路线图](#路线图)
@@ -514,6 +515,17 @@ MiniCode 当前主要支持：
 - `src/tui/*`: 终端 UI 模块
 - `src/config.ts`: 运行时配置加载
 - `src/install.ts`: 交互式安装器
+
+## 代码规模
+
+当前核心实现约 **7,874 行**。
+
+统计口径：
+
+- 纳入：核心 TypeScript 源码、内置工具、配置、MCP、会话、压缩、adapter、permissions，以及 `bin/minicode`
+- 排除：文档、测试、`external/`、`node_modules/` 和 TUI 文件（`src/tui/`、`src/tty-app.ts`、`src/ui.ts`）
+
+如果只排除 `src/tui/`，但保留 `src/tty-app.ts` 和 `src/ui.ts`，总计约 **9,767 行**。
 
 ## 架构文档
 
