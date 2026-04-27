@@ -130,6 +130,11 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     usage: '/compact',
     description: 'Compress conversation context to free up context window space.',
   },
+  {
+    name: '/snip',
+    usage: '/snip',
+    description: 'Remove a safe middle segment of conversation context without calling the model.',
+  },
 ]
 
 export function formatSlashCommands(): string {
