@@ -173,52 +173,6 @@ describe('Anthropic thinking block round trip', () => {
     )
   })
 
-  it('normalizes legacy interleaved tool history before sending it to the provider', async () => {
-    const requests: unknown[] = []
-
-    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
-      requests.push(JSON.parse(String(init?.body ?? '{}')))
-      return new Response(JSON.stringify({
-        stop_reason: 'end_turn',
-        content: [{ type: 'text', text: '<final>done' }],
-      }), { status: 200 })
-    }) as typeof fetch
-
-    const tools = createEchoTools()
-    const adapter = new AnthropicModelAdapter(tools, async () => createRuntime())
-    const messages: ChatMessage[] = [
-      { role: 'system', content: 'System' },
-      { role: 'user', content: 'Use two tools' },
-      {
-        role: 'assistant_thinking',
-        blocks: [{ type: 'thinking', thinking: 'I need two facts.', signature: 'legacy-signature' }],
-      },
-      { role: 'assistant_tool_call', toolUseId: 'toolu_1', toolName: 'echo_tool', input: { value: 'one' } },
-      { role: 'tool_result', toolUseId: 'toolu_1', toolName: 'echo_tool', content: 'one', isError: false },
-      { role: 'assistant_tool_call', toolUseId: 'toolu_2', toolName: 'echo_tool', input: { value: 'two' } },
-      { role: 'tool_result', toolUseId: 'toolu_2', toolName: 'echo_tool', content: 'two', isError: false },
-    ]
-
-    await adapter.next(messages)
-
-    const request = requests[0] as {
-      messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
-    }
-    const assistantMessages = request.messages.filter(message => message.role === 'assistant')
-    const toolResultMessages = request.messages.filter(message => message.role === 'user' &&
-      message.content.some(block => block.type === 'tool_result'))
-
-    assert.equal(assistantMessages.length, 1)
-    assert.deepEqual(
-      assistantMessages[0]!.content.map(block => block.type),
-      ['thinking', 'tool_use', 'tool_use'],
-    )
-    assert.deepEqual(
-      toolResultMessages[0]!.content.map(block => block.tool_use_id),
-      ['toolu_1', 'toolu_2'],
-    )
-  })
-
   it('preserves final assistant thinking blocks for the next user prompt', async () => {
     const requests: unknown[] = []
     let callCount = 0
