@@ -180,6 +180,7 @@ export async function runAgentTurn(args: {
         })
       ) {
         args.onProgressMessage?.(next.content)
+        appendThinkingBlocks(next.thinkingBlocks)
         messages = [
           ...messages,
           { role: 'assistant_progress', content: next.content },
@@ -244,6 +245,7 @@ export async function runAgentTurn(args: {
             : `模型返回空响应，已停止当前回合。请重试，或要求模型继续。${diagnosticsSuffix}`
 
         args.onAssistantMessage?.(fallbackContent)
+        appendThinkingBlocks(next.thinkingBlocks)
         return [
           ...messages,
           {
@@ -257,6 +259,7 @@ export async function runAgentTurn(args: {
         role: 'assistant',
         content: next.content,
       }
+      appendThinkingBlocks(next.thinkingBlocks)
       const withAssistant: ChatMessage[] = [
         ...messages,
         withProviderUsage(assistantMessage, next.usage),

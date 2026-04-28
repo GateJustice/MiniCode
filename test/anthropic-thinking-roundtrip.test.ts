@@ -218,6 +218,90 @@ describe('Anthropic thinking block round trip', () => {
       ['toolu_1', 'toolu_2'],
     )
   })
+
+  it('preserves final assistant thinking blocks for the next user prompt', async () => {
+    const requests: unknown[] = []
+    let callCount = 0
+
+    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      requests.push(JSON.parse(String(init?.body ?? '{}')))
+      callCount += 1
+
+      if (callCount === 1) {
+        return new Response(JSON.stringify({
+          stop_reason: 'tool_use',
+          content: [
+            {
+              type: 'thinking',
+              thinking: 'I need to inspect a fact first.',
+              signature: 'tool-thinking-signature',
+            },
+            {
+              type: 'tool_use',
+              id: 'toolu_1',
+              name: 'echo_tool',
+              input: { value: 'one' },
+            },
+          ],
+        }), { status: 200 })
+      }
+
+      if (callCount === 2) {
+        return new Response(JSON.stringify({
+          stop_reason: 'end_turn',
+          content: [
+            {
+              type: 'thinking',
+              thinking: 'I have the tool result and can answer.',
+              signature: 'final-thinking-signature',
+            },
+            { type: 'text', text: '<final>done' },
+          ],
+        }), { status: 200 })
+      }
+
+      return new Response(JSON.stringify({
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: '<final>continued' }],
+      }), { status: 200 })
+    }) as typeof fetch
+
+    const tools = createEchoTools()
+    const adapter = new AnthropicModelAdapter(tools, async () => createRuntime())
+    const firstTurn = await runAgentTurn({
+      model: adapter,
+      tools,
+      messages: [
+        { role: 'system', content: 'System' },
+        { role: 'user', content: 'Use a tool then answer' },
+      ],
+      cwd: process.cwd(),
+    })
+
+    await adapter.next([
+      ...firstTurn,
+      { role: 'user', content: 'Continue from the answer' },
+    ])
+
+    const thirdRequest = requests[2] as {
+      messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
+    }
+    const finalAssistant = thirdRequest.messages.find(message =>
+      message.role === 'assistant' &&
+      message.content.some(block => block.type === 'text' && block.text === 'done')
+    )
+
+    assert.ok(finalAssistant)
+    assert.deepEqual(
+      finalAssistant.content.map(block => block.type),
+      ['thinking', 'text'],
+    )
+    assert.deepEqual(finalAssistant.content[0], {
+      type: 'thinking',
+      thinking: 'I have the tool result and can answer.',
+      signature: 'final-thinking-signature',
+    })
+  })
 })
 
 function createRuntime(): RuntimeConfig {
