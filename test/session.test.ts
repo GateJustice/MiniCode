@@ -96,6 +96,7 @@ describe('session persistence', () => {
       { role: 'system', content: 'sys' },
       { role: 'user', content: 'hello' },
       { role: 'assistant', content: 'hi' },
+      { role: 'assistant_thinking', blocks: [{ type: 'thinking', thinking: 'hidden reasoning', signature: 'sig' }] },
       { role: 'assistant_tool_call', toolUseId: 'c1', toolName: 'read_file', input: { path: '/a.ts' } },
       { role: 'tool_result', toolUseId: 'c1', toolName: 'read_file', content: 'file contents', isError: false },
       { role: 'context_summary', content: 'summary text', compressedCount: 5, timestamp: 12345 },
@@ -104,12 +105,13 @@ describe('session persistence', () => {
     await saveSession(cwd, 'types001', messages)
     const loaded = await loadSession(cwd, 'types001')
 
-    assert.equal(loaded!.length, 5)
+    assert.equal(loaded!.length, 6)
     assert.equal(loaded![0].role, 'user')
     assert.equal(loaded![1].role, 'assistant')
-    assert.equal(loaded![2].role, 'assistant_tool_call')
-    assert.equal(loaded![3].role, 'tool_result')
-    assert.equal(loaded![4].role, 'context_summary')
+    assert.equal(loaded![2].role, 'assistant_thinking')
+    assert.equal(loaded![3].role, 'assistant_tool_call')
+    assert.equal(loaded![4].role, 'tool_result')
+    assert.equal(loaded![5].role, 'context_summary')
   })
 
   it('stores events in envelope jsonl format', async () => {

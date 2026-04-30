@@ -11,9 +11,15 @@ export type ProviderUsageMetadata = {
   usageStaleReason?: string
 }
 
+export type ProviderThinkingBlock = {
+  type: 'thinking' | 'redacted_thinking'
+  [key: string]: unknown
+}
+
 export type ChatMessage =
   | { role: 'system'; content: string }
   | { role: 'user'; content: string }
+  | { role: 'assistant_thinking'; blocks: ProviderThinkingBlock[] }
   | ({ role: 'assistant'; content: string } & ProviderUsageMetadata)
   | ({ role: 'assistant_progress'; content: string } & ProviderUsageMetadata)
   | ({
@@ -53,6 +59,7 @@ export type AgentStep =
       type: 'assistant'
       content: string
       kind?: 'final' | 'progress'
+      thinkingBlocks?: ProviderThinkingBlock[]
       diagnostics?: StepDiagnostics
       usage?: ProviderUsage
     }
@@ -61,6 +68,7 @@ export type AgentStep =
       calls: ToolCall[]
       content?: string
       contentKind?: 'progress'
+      thinkingBlocks?: ProviderThinkingBlock[]
       diagnostics?: StepDiagnostics
       usage?: ProviderUsage
     }
