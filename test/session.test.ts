@@ -11,6 +11,8 @@ import {
   renameSession,
   appendCompactBoundary,
   appendSnipBoundary,
+  appendContextCollapseSpan,
+  loadContextCollapseState,
   loadTranscript,
   forkSession,
   cleanupExpiredSessions,
@@ -25,6 +27,7 @@ import {
 } from '../src/utils/token-estimator.js'
 import { snipCompactConversation } from '../src/compact/snipCompact.js'
 import { compactConversation } from '../src/compact/compact.js'
+import type { CollapseSpan } from '../src/compact/context-collapse.js'
 
 const testDir = path.join(os.tmpdir(), 'minicode-session-test')
 
@@ -513,6 +516,41 @@ describe('session persistence', () => {
     const cwd = path.join(testDir, 'no-tx')
     const loaded = await loadTranscript(cwd, 'nonexist')
     assert.equal(loaded, null)
+  })
+
+  it('persists context collapse spans without changing loaded messages', async () => {
+    const cwd = path.join(testDir, 'collapse-state')
+    const sessionId = 'collapse1'
+    const messages = makeMessages(2)
+
+    await saveSession(cwd, sessionId, messages)
+    const loadedBefore = await loadSession(cwd, sessionId)
+    assert.ok(loadedBefore)
+    assert.equal(loadedBefore!.length, 4)
+
+    const collapsedIds = loadedBefore!.slice(0, 2).map(message => message.id!)
+    const span: CollapseSpan = {
+      id: 'collapse-test-span',
+      startMessageId: collapsedIds[0]!,
+      endMessageId: collapsedIds[collapsedIds.length - 1]!,
+      messageIds: collapsedIds,
+      summary: 'The first exchange was summarized for model-visible context only.',
+      tokensBefore: 4_000,
+      tokensAfter: 120,
+      status: 'committed',
+      createdAt: 123,
+      reason: 'context_pressure',
+    }
+
+    await appendContextCollapseSpan(cwd, sessionId, span)
+
+    const loadedAfter = await loadSession(cwd, sessionId)
+    assert.deepEqual(loadedAfter, loadedBefore)
+
+    const collapseState = await loadContextCollapseState(cwd, sessionId)
+    assert.ok(collapseState)
+    assert.deepEqual(collapseState!.spans, [span])
+    assert.equal(collapseState!.enabled, true)
   })
 
   it('saveSession writes parentUuid chain linking consecutive events', async () => {
