@@ -9,6 +9,10 @@ import type {
 import type { PermissionManager } from './permissions.js'
 import { microcompact } from './compact/microcompact.js'
 import { autoCompact } from './compact/auto-compact.js'
+import {
+  snipCompactConversation,
+  type SnipCompactResult,
+} from './compact/snipCompact.js'
 import { computeContextStats } from './utils/token-estimator.js'
 import {
   applyToolResultBudget,
@@ -111,7 +115,8 @@ export async function runAgentTurn(args: {
   onToolResult?: (toolName: string, output: string, isError: boolean) => void
   onAssistantMessage?: (content: string) => void
   onProgressMessage?: (content: string) => void
-  onAutoCompact?: (result: CompressionResult) => void
+  onAutoCompact?: (result: CompressionResult) => void | Promise<void>
+  onSnipCompact?: (result: SnipCompactResult) => void | Promise<void>
   onContextStats?: (stats: import('./utils/token-estimator.js').ContextStats) => void
   contentReplacementState?: ContentReplacementState
 }): Promise<ChatMessage[]> {
@@ -122,6 +127,7 @@ export async function runAgentTurn(args: {
   let recoverableThinkingRetryCount = 0
   let toolErrorCount = 0
   let sawToolResultThisTurn = false
+  let snippedThisTurn = false
   const contentReplacementState =
     args.contentReplacementState ?? createContentReplacementState()
 
@@ -147,22 +153,45 @@ export async function runAgentTurn(args: {
   }
 
   for (let step = 0; maxSteps == null || step < maxSteps; step++) {
-    // Microcompact: lightweight tool_result cleanup on every step
+    let latestStats: import('./utils/token-estimator.js').ContextStats | null = null
+
     if (modelName) {
+      latestStats = computeContextStats(messages, modelName)
+
+      if (!snippedThisTurn) {
+        const snipResult = await snipCompactConversation({
+          messages,
+          contextStats: latestStats,
+          modelContextWindow: latestStats.effectiveInput,
+        })
+        if (snipResult.didSnip) {
+          messages = snipResult.messages
+          snippedThisTurn = true
+          await args.onSnipCompact?.(snipResult)
+          latestStats = computeContextStats(messages, modelName)
+          args.onContextStats?.(latestStats)
+        }
+      }
+
+      const beforeMicrocompact = messages
       messages = microcompact(messages, modelName)
+      if (messages !== beforeMicrocompact) {
+        latestStats = computeContextStats(messages, modelName)
+        args.onContextStats?.(latestStats)
+      }
     }
 
     // AutoCompact: LLM-based compression when context is critical (first step only)
     if (step === 0 && modelName) {
-      const stats = computeContextStats(messages, modelName)
-      args.onContextStats?.(stats)
-      if (stats.warningLevel === 'critical' || stats.warningLevel === 'blocked') {
+      latestStats = latestStats ?? computeContextStats(messages, modelName)
+      args.onContextStats?.(latestStats)
+      if (latestStats.warningLevel === 'critical' || latestStats.warningLevel === 'blocked') {
         const result = await autoCompact(messages, modelName, args.model)
         if (result) {
           messages = result.messages
-          args.onAutoCompact?.(result)
-          const updatedStats = computeContextStats(messages, modelName)
-          args.onContextStats?.(updatedStats)
+          await args.onAutoCompact?.(result)
+          latestStats = computeContextStats(messages, modelName)
+          args.onContextStats?.(latestStats)
         }
       }
     }

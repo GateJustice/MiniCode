@@ -23,6 +23,7 @@ import {
   listSessions,
   renameSession,
   appendCompactBoundary,
+  appendSnipBoundary,
   loadTranscript,
   forkSession,
   cleanupExpiredSessions,
@@ -55,6 +56,7 @@ import type { ChatMessage, CompressionResult, ModelAdapter } from './types.js'
 import type { ContextStats } from './utils/token-estimator.js'
 import { computeContextStats } from './utils/token-estimator.js'
 import { manualCompact } from './compact/manual-compact.js'
+import { snipCompactConversation } from './compact/snipCompact.js'
 import {
   createContentReplacementState,
   type ContentReplacementState,
@@ -584,6 +586,12 @@ async function refreshSystemPrompt(args: TtyAppArgs): Promise<void> {
   }
 }
 
+function retainedMessagesAfterCompact(result: CompressionResult): ChatMessage[] {
+  return result.messages.filter(message => (
+    message.role !== 'system' && message !== result.summary
+  ))
+}
+
 async function executeToolShortcut(
   args: TtyAppArgs,
   state: ScreenState,
@@ -673,6 +681,11 @@ async function resumeSession(
           kind: 'assistant',
           body: `[Context summary: ${msg.compressedCount} messages compressed]`,
         })
+      } else if (msg.role === 'snip_boundary') {
+        pushTranscriptEntry(state, {
+          kind: 'assistant',
+          body: `Snipped earlier context: removed ${msg.removedCount} messages, freed ~${Math.round(msg.tokensFreed)} tokens.`,
+        })
       }
     }
   }
@@ -701,6 +714,42 @@ async function handleInput(
   if (!input) return false
   if (input === '/exit') return true
 
+  // /snip: deterministic middle-context removal without calling the model
+  if (input === '/snip') {
+    const model = args.runtime?.model ?? ''
+    const stats = computeContextStats(args.messages, model)
+    const result = await snipCompactConversation({
+      messages: args.messages,
+      contextStats: stats,
+      modelContextWindow: stats.effectiveInput,
+    })
+
+    if (!result.didSnip || result.boundaryMessage?.role !== 'snip_boundary') {
+      pushTranscriptEntry(state, {
+        kind: 'assistant',
+        body: 'Nothing safe to snip.',
+      })
+      return false
+    }
+
+    await appendSnipBoundary(args.cwd, args.sessionId, result.boundaryMessage)
+    args.messages.length = 0
+    args.messages.push(...result.messages)
+    args.alreadySavedCount = 0
+    state.contextStats = computeContextStats(args.messages, model)
+    state.compressionStatus = `snip saved ~${Math.round(result.tokensFreed)} tokens`
+    state.transcriptScrollOffset = 0
+    pushTranscriptEntry(state, {
+      kind: 'assistant',
+      body: `Snipped earlier context: removed ${result.removedMessageIds.length} messages, freed ~${Math.round(result.tokensFreed)} tokens.`,
+    })
+    setTimeout(() => {
+      state.compressionStatus = null
+      rerender()
+    }, 5000)
+    return false
+  }
+
   // /compact: manual context compression
   if (input === '/compact') {
     if (args.messages.length <= 2) {
@@ -726,7 +775,15 @@ async function handleInput(
       const result = await manualCompact(args.messages, args.model)
       if (result) {
         const summaryText = typeof result.summary.content === 'string' ? result.summary.content : ''
-        await appendCompactBoundary(args.cwd, args.sessionId, summaryText, 'manual', result.tokensBefore, result.tokensAfter)
+        await appendCompactBoundary(
+          args.cwd,
+          args.sessionId,
+          summaryText,
+          'manual',
+          result.tokensBefore,
+          result.tokensAfter,
+          retainedMessagesAfterCompact(result),
+        )
         args.messages.length = 0
         args.messages.push(...result.messages)
         args.alreadySavedCount = args.messages.length - 1
@@ -955,7 +1012,7 @@ async function handleInput(
         state.contextStats = stats
         rerender()
       },
-      onAutoCompact(result) {
+      async onAutoCompact(result) {
         const savedPct = Math.round((1 - result.tokensAfter / result.tokensBefore) * 100)
         const savedTokens = result.tokensBefore - result.tokensAfter
         state.compressionStatus = `ctx -${savedPct}% (saved ${savedTokens >= 1000 ? `${Math.round(savedTokens / 1000)}K` : savedTokens} tokens)`
@@ -964,8 +1021,32 @@ async function handleInput(
           body: `Context auto-compressed: ${result.removedCount} messages summarized.`,
         })
         const summaryText = typeof result.summary.content === 'string' ? result.summary.content : ''
-        void appendCompactBoundary(args.cwd, args.sessionId, summaryText, 'auto', result.tokensBefore, result.tokensAfter)
-        args.alreadySavedCount = 2 // boundary + summary events appended
+        await appendCompactBoundary(
+          args.cwd,
+          args.sessionId,
+          summaryText,
+          'auto',
+          result.tokensBefore,
+          result.tokensAfter,
+          retainedMessagesAfterCompact(result),
+        )
+        args.alreadySavedCount = result.messages.length - 1
+        state.transcriptScrollOffset = 0
+        setTimeout(() => {
+          state.compressionStatus = null
+          rerender()
+        }, 5000)
+      },
+      async onSnipCompact(result) {
+        if (result.boundaryMessage?.role === 'snip_boundary') {
+          await appendSnipBoundary(args.cwd, args.sessionId, result.boundaryMessage)
+        }
+        args.alreadySavedCount = 0
+        state.compressionStatus = `snip saved ~${Math.round(result.tokensFreed)} tokens`
+        pushTranscriptEntry(state, {
+          kind: 'assistant',
+          body: `Snipped earlier context: removed ${result.removedMessageIds.length} messages, freed ~${Math.round(result.tokensFreed)} tokens.`,
+        })
         state.transcriptScrollOffset = 0
         setTimeout(() => {
           state.compressionStatus = null

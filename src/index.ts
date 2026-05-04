@@ -196,6 +196,7 @@ async function main(): Promise<void> {
           messages,
           cwd,
           permissions,
+          modelName: runtime?.model ?? '',
           contentReplacementState,
         })
       } catch (error) {

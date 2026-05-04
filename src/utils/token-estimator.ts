@@ -40,6 +40,7 @@ const CHARS_PER_TOKEN: Record<string, number> = {
   assistant_tool_call: 2.5,
   tool_result: 2.0,
   context_summary: 3.5,
+  snip_boundary: 3.5,
 }
 
 const CLEAR_MARKER = '[Output cleared for context space]'
@@ -66,6 +67,8 @@ function messageContentLength(message: ChatMessage): number {
     case 'tool_result':
       return message.content.length
     case 'context_summary':
+      return message.content.length
+    case 'snip_boundary':
       return message.content.length
     default:
       return 0
