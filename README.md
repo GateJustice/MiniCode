@@ -197,11 +197,11 @@ Management commands include `minicode mcp ...` and `minicode skills ...`. See [C
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=LiuMengxuan04%2FMiniCode&type=date&legend=top-left">
+<a href="https://star-history.dera.page/#LiuMengxuan04/MiniCode&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=LiuMengxuan04/MiniCode&type=date&theme=dark&legend=bottom-right" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=LiuMengxuan04/MiniCode&type=date&legend=bottom-right" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=LiuMengxuan04/MiniCode&type=date&legend=bottom-right" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=LiuMengxuan04/MiniCode&type=date&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=LiuMengxuan04/MiniCode&type=date&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=LiuMengxuan04/MiniCode&type=date&legend=bottom-right" />
  </picture>
 </a>
 

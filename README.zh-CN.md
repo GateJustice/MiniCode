@@ -198,10 +198,10 @@ MINI_CODE_MODEL_MODE=mock npm run dev
 ## Star 趋势
 
 <p align="center">
-  <a href="https://star-history.com/#LiuMengxuan04/MiniCode&Date">
+  <a href="https://star-history.dera.page/#LiuMengxuan04/MiniCode&Date">
     <img
       alt="Star History Chart"
-      src="https://api.star-history.com/image?repos=LiuMengxuan04/MiniCode&style=landscape1"
+      src="https://star-history.dera.page/svg?repos=LiuMengxuan04/MiniCode&style=landscape1"
     />
   </a>
 </p>
