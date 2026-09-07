@@ -506,3 +506,17 @@ npm test
 ```
 
 MiniCode is intentionally small and pragmatic. The goal is to keep the architecture understandable, hackable, and easy to extend.
+
+## Goal: continue across turns
+
+Use `/goal <description>` to create and start one in-memory Goal. `/goal` or `/goal status` shows the objective, completion criteria, status, and shared Plan. The agent first updates a nonempty Plan and sets criteria with `update_goal`. Ordinary final answers end one turn; an active Goal continues in another turn.
+
+- `/goal pause [reason]` stops automatic execution, including during a model request or approval. Already-started tools settle and their results are retained; remaining calls in the batch are cancelled.
+- `/goal resume` explicitly resumes a paused or blocked Goal. If `ask_user` is waiting, answer it first. Answering while paused records the answer and leaves the Goal paused.
+- `/goal clear` stops and removes the Goal while retaining the Plan and workspace changes. Clear an existing Goal before creating another.
+- The agent uses `get_goal` and `update_goal` only in Goal turns. It cannot create a Goal, change its original description, or resume itself.
+- Completion requires a prepared nonempty Plan with every Todo completed, nonempty criteria, a summary, and one check explanation per criterion. This MVP validates structure, not references to tool evidence. Completed/blocked updates stop the rest of the tool batch immediately.
+
+Each Goal turn is limited to 50 model/tool steps. Three consecutive automatic turns without tool calls pause the Goal. Model errors, unhandled tool errors, and session-save failures also stop automatic execution. The existing file and command approval rules still apply.
+
+Goal and Plan state are process-local. TUI `/new`, `/resume`, and `/fork` stop execution and clear Goal state; a restarted process never resumes automatically. Non-TTY input also accepts Goal commands, but cannot approve interactive operations; EOF stops execution. Goal updates, persistence, stronger evidence checks, and richer UI are follow-up work.

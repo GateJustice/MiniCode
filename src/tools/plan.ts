@@ -28,10 +28,14 @@ export function createUpdatePlanTool(plan: PlanManager): ToolDefinition<z.infer<
     },
     schema: updatePlanSchema,
     async run(input) {
-      const updated = plan.update(input.todos)
-      return {
-        ok: true,
-        output: JSON.stringify({ ...updated, explanation: input.explanation }),
+      try {
+        const updated = plan.update(input.todos)
+        return {
+          ok: true,
+          output: JSON.stringify({ ...updated, explanation: input.explanation }),
+        }
+      } catch (error) {
+        return { ok: false, output: error instanceof Error ? error.message : String(error) }
       }
     },
   }
