@@ -772,7 +772,7 @@ function renderScreen(args: TtyAppArgs, state: ScreenState): void {
       })),
     )
     frame.push('')
-    frame.push(`Control: ${state.input || '/goal pause or /exit'}`)
+    frame.push(`Control: ${state.input || '/goal pause, /loop stop, or /exit'}`)
     frame.push(renderPanel('activity', renderToolPanel(state.activeTool, state.recentTools, backgroundTasks)))
     frame.push('')
     frame.push(
@@ -1058,8 +1058,8 @@ async function handleInput(
     await saveSession(args.cwd, args.sessionId, args.messages, args.alreadySavedCount)
     args.alreadySavedCount = args.messages.length - 1
   }
-  if (state.isBusy || args.execution!.turns.busy || args.execution!.goal.running) {
-    setStatus(state, 'Current turn is still running. Use /goal pause or /exit.')
+  if (state.isBusy || args.execution!.turns.busy || args.execution!.goal.running || args.execution!.loop.running) {
+    setStatus(state, 'Current turn is still running. Use /goal pause, /loop stop, or /exit.')
     return false
   }
 
@@ -1708,7 +1708,7 @@ function createPermissionPromptHandler(
     state.pendingApproval = pending
     if (signal?.aborted) cancel()
     else signal?.addEventListener('abort', cancel, { once: true })
-    setStatus(state, 'Waiting for approval... (/goal pause is available)')
+    setStatus(state, 'Waiting for approval... (/goal pause or /loop stop is available)')
     rerender()
   })
 }
@@ -1902,7 +1902,7 @@ export async function runTtyApp(args: TtyAppArgs): Promise<void> {
           return
         }
         if (event.kind === 'key' && event.name === 'return' &&
-          /^\/(goal|plan|new|resume|fork|exit)(?:\s|$)/.test(state.input.trim())) {
+          /^\/(goal|loop|plan|new|resume|fork|exit)(?:\s|$)/.test(state.input.trim())) {
           if (controlInFlight) return
           const submittedInput = state.input
           state.input = ''
@@ -1913,7 +1913,7 @@ export async function runTtyApp(args: TtyAppArgs): Promise<void> {
             if (shouldExit) finish()
           }).catch(error => {
             pushTranscriptEntry(state, { kind: 'assistant', body: error instanceof Error ? error.message : String(error) })
-          }).finally(() => { controlInFlight = false; scheduleRender() })
+          }).finally(() => { controlInFlight = false; permissionArgs.execution!.notifyIdle(); scheduleRender() })
           return
         }
         if (state.pendingApproval && !state.input.startsWith('/')) {
@@ -2347,6 +2347,7 @@ export async function runTtyApp(args: TtyAppArgs): Promise<void> {
               scheduleRender()
             } finally {
               submitInFlight = false
+              permissionArgs.execution!.notifyIdle()
             }
           })()
           return

@@ -170,8 +170,9 @@ async function main(): Promise<void> {
     )
     console.log('')
 
+    let localBusy = false
     const execution = new SessionRuntime({
-      plan, tools,
+      plan, tools, isBusy: () => localBusy,
       async execute(request) {
         await refreshSystemPrompt()
         messages = [...messages, request.input]
@@ -213,96 +214,102 @@ async function main(): Promise<void> {
       if (input === '/exit') break
 
       try {
-        const runtimeReply = await execution.command(input)
-        if (runtimeReply !== null) {
-          console.log(`\n${runtimeReply}\n`)
-          continue
-        }
-        if (input === '/plan') {
-          console.log(await tryHandleLocalCommand(input, { plan }))
-          continue
-        }
-        if (execution.turns.busy || execution.goal.running) {
-          console.log('Current turn is running. Use /goal pause or /exit.')
-          continue
-        }
-        if (input === '/tools') {
-          console.log(
-            `\n${tools.list().map(tool => `${tool.name}: ${tool.description}`).join('\n')}\n`,
-          )
-          continue
-        }
-
-        if (input === '/collapse') {
-          if (!runtime?.model) {
-            console.log('\nNo model configured. Cannot collapse context.\n')
+        try {
+          const runtimeReply = await execution.command(input)
+          if (runtimeReply !== null) {
+            console.log(`\n${runtimeReply}\n`)
             continue
           }
-
-          const result = await applyContextCollapseIfNeeded(
-            messages,
-            runtime.model,
-            model,
-            contextCollapseState,
-            {
-              utilizationThreshold: 0,
-              reason: 'manual',
-            },
-          )
-          contextCollapseState.spans = [...result.state.spans]
-          contextCollapseState.enabled = result.state.enabled
-          contextCollapseState.consecutiveFailures = result.state.consecutiveFailures
-
-          if (!result.collapsed) {
+          if (input === '/plan') {
+            console.log(await tryHandleLocalCommand(input, { plan }))
+            continue
+          }
+          if (execution.turns.busy || execution.goal.running || execution.loop.running) {
+            console.log('Current turn is running. Use /goal pause, /loop stop, or /exit.')
+            continue
+          }
+          localBusy = true
+          if (input === '/tools') {
             console.log(
-              result.state.enabled
-                ? '\nNothing safe to collapse.\n'
-                : '\nContext collapse is disabled after repeated summary failures.\n',
+              `\n${tools.list().map(tool => `${tool.name}: ${tool.description}`).join('\n')}\n`,
             )
             continue
           }
 
-          const savedTokens = result.spans.reduce(
-            (sum, span) => sum + Math.max(0, span.tokensBefore - span.tokensAfter),
-            0,
-          )
-          console.log(
-            `\nContext collapse projected ${result.spans.length} span${result.spans.length === 1 ? '' : 's'} into model-visible summaries, saving ~${Math.round(savedTokens)} tokens. Original transcript is preserved.\n`,
-          )
-          continue
-        }
+          if (input === '/collapse') {
+            if (!runtime?.model) {
+              console.log('\nNo model configured. Cannot collapse context.\n')
+              continue
+            }
 
-        const localCommandResult = await tryHandleLocalCommand(input, {
-          cwd,
-          tools,
-          plan,
-          permissionSummary: permissions.getSummary(),
-        })
-        if (localCommandResult !== null) {
-          console.log(`\n${localCommandResult}\n`)
-          continue
-        }
+            const result = await applyContextCollapseIfNeeded(
+              messages,
+              runtime.model,
+              model,
+              contextCollapseState,
+              {
+                utilizationThreshold: 0,
+                reason: 'manual',
+              },
+            )
+            contextCollapseState.spans = [...result.state.spans]
+            contextCollapseState.enabled = result.state.enabled
+            contextCollapseState.consecutiveFailures = result.state.consecutiveFailures
 
-        if (input.startsWith('/')) {
-          const matches = findMatchingSlashCommands(input)
-          if (matches.length > 0) {
-            console.log(`\n未识别命令。你是不是想输入：\n${matches.join('\n')}\n`)
-          } else {
-            console.log(`\n未识别命令。输入 /help 查看可用命令。\n`)
+            if (!result.collapsed) {
+              console.log(
+                result.state.enabled
+                  ? '\nNothing safe to collapse.\n'
+                  : '\nContext collapse is disabled after repeated summary failures.\n',
+              )
+              continue
+            }
+
+            const savedTokens = result.spans.reduce(
+              (sum, span) => sum + Math.max(0, span.tokensBefore - span.tokensAfter),
+              0,
+            )
+            console.log(
+              `\nContext collapse projected ${result.spans.length} span${result.spans.length === 1 ? '' : 's'} into model-visible summaries, saving ~${Math.round(savedTokens)} tokens. Original transcript is preserved.\n`,
+            )
+            continue
           }
+
+          const localCommandResult = await tryHandleLocalCommand(input, {
+            cwd,
+            tools,
+            plan,
+            permissionSummary: permissions.getSummary(),
+          })
+          if (localCommandResult !== null) {
+            console.log(`\n${localCommandResult}\n`)
+            continue
+          }
+
+          if (input.startsWith('/')) {
+            const matches = findMatchingSlashCommands(input)
+            if (matches.length > 0) {
+              console.log(`\n未识别命令。你是不是想输入：\n${matches.join('\n')}\n`)
+            } else {
+              console.log(`\n未识别命令。输入 /help 查看可用命令。\n`)
+            }
+            continue
+          }
+        } catch (error) {
+          console.log(
+            `\n${error instanceof Error ? error.message : String(error)}\n`,
+          )
           continue
         }
-      } catch (error) {
-        console.log(
-          `\n${error instanceof Error ? error.message : String(error)}\n`,
-        )
-        continue
-      }
 
-      try {
-        await execution.submit(input)
-      } catch (error) {
-        console.log(error instanceof Error ? error.message : String(error))
+        try {
+          await execution.submit(input)
+        } catch (error) {
+          console.log(error instanceof Error ? error.message : String(error))
+        }
+      } finally {
+        localBusy = false
+        execution.notifyIdle()
       }
     }
 

@@ -520,3 +520,15 @@ Use `/goal <description>` to create and start one in-memory Goal. `/goal` or `/g
 Each Goal turn is limited to 50 model/tool steps. Three consecutive automatic turns without tool calls pause the Goal. Model errors, unhandled tool errors, and session-save failures also stop automatic execution. The existing file and command approval rules still apply.
 
 Goal and Plan state are process-local. TUI `/new`, `/resume`, and `/fork` stop execution and clear Goal state; a restarted process never resumes automatically. Non-TTY input also accepts Goal commands, but cannot approve interactive operations; EOF stops execution. Goal updates, persistence, stronger evidence checks, and richer UI are follow-up work.
+
+## Loop: repeat a prompt
+
+`/loop [Nm|Nh] <prompt>` creates one process-local recurring prompt; for example, `/loop 5m Review the test output and report any changes`. Omit the interval for 10 minutes. Intervals must be at least 1 minute and fit a JavaScript timer. `/loop` displays the task; `/loop stop` stops and removes it, retaining the Plan.
+
+The first run starts when the session is idle. Each successful final is followed by a full interval measured from completion, including tool and message-save settlement. If another turn or local command is busy when the timer fires, Loop keeps one pending trigger and runs once after it becomes idle. It never accumulates missed runs. Ordinary chat can run between triggers.
+
+Loop uses the same agent runner and optional Plan, with at most 50 steps per turn. It has no Goal context or Goal tools. An active, running, stopping, or waiting Goal/Loop blocks the other mode; pause/clear the Goal or stop the Loop before switching. An unanswered Goal question must be answered or cleared first.
+
+`ask_user` suspends scheduling until a real answer arrives. Approvals continue to use the existing UI; `/loop stop` also works during approval. Errors or the step limit leave Loop paused. This MVP has no pause/resume commands or `stop_loop` tool: inspect `/loop`, then stop and recreate as needed.
+
+TUI session switches and process exit cancel timers and active runs. State is not restored after restart. Explicit background shell commands remain governed by existing behavior; stopping Loop does not undo workspace changes or terminate previously detached commands. No cron expressions, daemon, multiple tasks, or catch-up queue are provided.
