@@ -179,6 +179,7 @@ function extractTitleFromEvents(lines: string[]): string | undefined {
   for (const line of lines) {
     const event = parseEvent(line)
     if (!event || event.type !== 'user') continue
+    if ((event.message as { internal?: string } | null)?.internal) continue
     const content = (event.message as { content?: unknown } | null)?.content
     if (typeof content !== 'string' || !content.trim()) continue
     const text = content.trim()
@@ -664,6 +665,7 @@ export async function loadTranscript(
 
       switch (event.type) {
         case 'user':
+          if (msg.internal) break
           entries.push({ kind: 'user', body: typeof msg.content === 'string' ? msg.content : '' })
           break
         case 'assistant':

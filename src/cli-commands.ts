@@ -19,6 +19,12 @@ export type SlashCommand = {
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
+  { name: '/goal', usage: '/goal', description: 'Show the current in-memory Goal, criteria, status and Plan.' },
+  { name: '/goal', usage: '/goal <description>', description: 'Create a Goal and start automatic turns.' },
+  { name: '/goal', usage: '/goal status', description: 'Show Goal status.' },
+  { name: '/goal', usage: '/goal pause [reason]', description: 'Pause the Goal, including during a turn or approval.' },
+  { name: '/goal', usage: '/goal resume', description: 'Explicitly resume a paused or blocked Goal.' },
+  { name: '/goal', usage: '/goal clear', description: 'Stop and clear the Goal; retain the Plan.' },
   {
     name: '/plan',
     usage: '/plan',

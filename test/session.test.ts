@@ -114,6 +114,22 @@ describe('session persistence', () => {
     await cleanupAll()
   })
 
+  it('persists internal continuations without displaying them as users or choosing them as titles', async () => {
+    const messages: ChatMessage[] = [
+      { role: 'system', content: 'System' },
+      { role: 'user', internal: 'goal', content: 'Internal automatic continuation' },
+      { role: 'user', content: 'User-owned objective' },
+      { role: 'assistant', content: 'Answer' },
+    ]
+    await saveSession(testDir, 'internal-goal', messages, 0)
+    const loaded = await loadSession(testDir, 'internal-goal')
+    assert.ok(loaded?.some(message => message.role === 'user' && message.internal === 'goal'))
+    const transcript = await loadTranscript(testDir, 'internal-goal')
+    assert.deepEqual(transcript?.filter(entry => entry.kind === 'user').map(entry => entry.body), ['User-owned objective'])
+    const sessions = await listSessions(testDir)
+    assert.equal(sessions.find(session => session.id === 'internal-goal')?.title, 'User-owned objective')
+  })
+
   it('round-trips messages and excludes system prompt', async () => {
     const cwd = path.join(testDir, 'project-a')
     const messages = makeMessages(3)

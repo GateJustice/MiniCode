@@ -25,7 +25,8 @@ import { SubAgentManager } from './agents/manager.js'
 import type { ChatMessage } from './types.js'
 import { renderBanner } from './ui.js'
 import { runTtyApp } from './tty-app.js'
-import { runAgentTurn } from './agent-loop.js'
+import { SessionRuntime } from './runtime/session-runtime.js'
+import { runAgentTurnWithOutcome } from './agent-loop.js'
 import {
   applyContextCollapseIfNeeded,
   createContextCollapseState,
@@ -169,6 +170,35 @@ async function main(): Promise<void> {
     )
     console.log('')
 
+    const execution = new SessionRuntime({
+      plan, tools,
+      async execute(request) {
+        await refreshSystemPrompt()
+        messages = [...messages, request.input]
+        permissions.beginTurn(request.signal)
+        try {
+          const result = await runAgentTurnWithOutcome({
+            model, tools: execution.toolsFor(request.mode), plan, messages, cwd, permissions,
+            runtimeContext: () => execution.contextFor(request.mode),
+            signal: request.signal, maxSteps: request.mode ? 50 : undefined,
+            stopOnFatalToolError: !!request.mode,
+            modelName: runtime?.model ?? '', contentReplacementState, contextCollapseState,
+            onAssistantMessage: content => console.log(`\n${content}\n`),
+          })
+          messages = result.messages
+          if (result.error) console.log(`\n${result.error}\n`)
+          return result
+        } finally {
+          permissions.endTurn()
+        }
+      },
+      async recordAnswer(input) { messages.push(input) },
+      notice: message => console.log(`\n${message}\n`),
+      settleWorkers: () => subAgents.closeAll(),
+    })
+    const stopOnInterrupt = () => { void execution.stop() }
+    process.on('SIGINT', stopOnInterrupt)
+
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -183,6 +213,19 @@ async function main(): Promise<void> {
       if (input === '/exit') break
 
       try {
+        const runtimeReply = await execution.command(input)
+        if (runtimeReply !== null) {
+          console.log(`\n${runtimeReply}\n`)
+          continue
+        }
+        if (input === '/plan') {
+          console.log(await tryHandleLocalCommand(input, { plan }))
+          continue
+        }
+        if (execution.turns.busy || execution.goal.running) {
+          console.log('Current turn is running. Use /goal pause or /exit.')
+          continue
+        }
         if (input === '/tools') {
           console.log(
             `\n${tools.list().map(tool => `${tool.name}: ${tool.description}`).join('\n')}\n`,
@@ -256,43 +299,16 @@ async function main(): Promise<void> {
         continue
       }
 
-      await refreshSystemPrompt()
-      messages = [...messages, { role: 'user', content: input }]
-      permissions.beginTurn()
       try {
-        messages = await runAgentTurn({
-          model,
-          tools,
-          plan,
-          messages,
-          cwd,
-          permissions,
-          modelName: runtime?.model ?? '',
-          contentReplacementState,
-          contextCollapseState,
-        })
+        await execution.submit(input)
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error)
-        messages = [
-          ...messages,
-          {
-            role: 'assistant',
-            content: `请求失败: ${message}`,
-          },
-        ]
-      } finally {
-        permissions.endTurn()
-      }
-
-      const lastAssistant = [...messages]
-        .reverse()
-        .find(message => message.role === 'assistant')
-
-      if (lastAssistant?.role === 'assistant') {
-        console.log(`\n${lastAssistant.content}\n`)
+        console.log(error instanceof Error ? error.message : String(error))
       }
     }
+
+    await execution.stop()
+    execution.goal.manager.dispose()
+    process.off('SIGINT', stopOnInterrupt)
 
     try {
       rl.close()
