@@ -19,6 +19,9 @@ export type SlashCommand = {
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
+  { name: '/loop', usage: '/loop', description: 'Show the current in-memory Loop.' },
+  { name: '/loop', usage: '/loop [Nm|Nh] <prompt>', description: 'Repeat a prompt after each interval; default 10m, minimum 1m.' },
+  { name: '/loop', usage: '/loop stop', description: 'Stop the Loop, including during a turn or approval.' },
   { name: '/goal', usage: '/goal', description: 'Show the current in-memory Goal, criteria, status and Plan.' },
   { name: '/goal', usage: '/goal <description>', description: 'Create a Goal and start automatic turns.' },
   { name: '/goal', usage: '/goal status', description: 'Show Goal status.' },
