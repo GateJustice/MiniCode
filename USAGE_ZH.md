@@ -46,6 +46,7 @@
 - `web_fetch`
 - `web_search`
 - `ask_user`
+- `update_plan`（仅 root agent）
 - `load_skill`
 - `list_mcp_resources`
 - `read_mcp_resource`
@@ -162,6 +163,7 @@ MINI_CODE_MODEL_MODE=mock npm run dev
 
 - `/help`
 - `/tools`
+- `/plan`
 - `/skills`
 - `/mcp`
 - `/status`
@@ -170,6 +172,20 @@ MINI_CODE_MODEL_MODE=mock npm run dev
 - `/model`
 - `/model <name>`
 - `/config-paths`
+
+### Plan / Todo（内存最简版）
+
+可以要求 Agent 为多步任务维护清单，例如：
+
+```text
+阅读搜索功能的实现，梳理测试覆盖情况，用 update_plan 跟踪步骤，暂不修改文件。
+```
+
+`update_plan` 接收完整 Todo 列表：已有条目携带工具返回的 ID，新条目省略 `id`。同一个工具支持新增、改名、删除、重排、完成和重开，可用可选的 `explanation` 简述调整原因。三种状态分别为 `pending`（`[ ]`）、`in_progress`（`[>]`，即 Active）和 `completed`（`[x]`）。最多一个条目为 Active；非法更新不会改变原清单。空列表用于清空，全部完成的清单仍保留展示。
+
+输入 `/plan` 即可查看，无需调用模型。更新成功后，TUI 的工具结果也会显示清单。每次 root 模型请求都会注入最新 Plan，压缩上下文后仍然有效；只读 sub-agent 不能修改 Plan。Plan 不调度执行，即使还有未完成项，普通 final 也会正常结束当前回合。
+
+本阶段只在内存中保留当前会话的 Plan。重启、`/new`、`/resume` 或 `/fork` 后清单为空；历史中的旧工具消息不用于恢复 Plan。`/compact` 与上下文投影不清空当前 Plan。手工编辑命令、Todo 选择交互和持久化留到下一阶段。
 
 ### 终端交互能力
 

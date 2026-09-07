@@ -124,6 +124,7 @@ MiniCode is a good fit if you want:
 
 - Multi-step tool execution in a single turn, forming a `model -> tool -> model` loop.
 - Up to 3 concurrent read-only sub-agents; the root agent owns all code changes and can wait for or close workers.
+- An in-memory Todo plan shared across root-agent turns, updated with `update_plan` and viewed with `/plan`.
 - Full-screen terminal UI with input history, transcript scrolling, slash command menu, and approval flows.
 - Per-project session persistence with resume, rename, fork, and compact commands.
 - Provider-usage-first context stats with tail estimates, auto-compact, context collapse, and snip compact.
@@ -173,6 +174,7 @@ MINI_CODE_MODEL_MODE=mock npm run dev
 
 - `/help`: show interactive help.
 - `/tools`: list available tools.
+- `/plan`: view the current in-memory Todo list.
 - `/skills`: list discovered skills.
 - `/mcp`: show MCP connection status.
 - `/status`: show session and context status.

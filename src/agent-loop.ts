@@ -16,6 +16,8 @@ import {
   type ContextCollapseState,
 } from './compact/context-collapse.js'
 import { throwIfAborted } from './abort.js'
+import type { PlanManager } from './plan/manager.js'
+import { withPlanContext } from './plan/context.js'
 import {
   snipCompactConversation,
   type SnipCompactResult,
@@ -129,6 +131,7 @@ export async function runAgentTurn(args: {
   contentReplacementState?: ContentReplacementState
   contextCollapseState?: ContextCollapseState
   signal?: AbortSignal
+  plan?: PlanManager
 }): Promise<ChatMessage[]> {
   const maxSteps = args.maxSteps
   const modelName = args.modelName ?? ''
@@ -236,6 +239,11 @@ export async function runAgentTurn(args: {
           args.onContextStats?.(latestStats)
         }
       }
+    }
+
+    if (args.plan) {
+      modelMessages = withPlanContext(modelMessages, args.plan.getSnapshot())
+      if (modelName) args.onContextStats?.(computeContextStats(modelMessages, modelName))
     }
 
     const next = await args.model.next(modelMessages, {

@@ -16,6 +16,8 @@ import {
   PermissionRequest,
 } from './permissions.js'
 import { buildSystemPrompt } from './prompt.js'
+import type { PlanManager } from './plan/manager.js'
+import { formatPlan } from './plan/context.js'
 import { discoverInstructionFiles } from './memory.js'
 import {
   saveSession,
@@ -83,6 +85,7 @@ type TtyAppArgs = {
   tools: ToolRegistry
   model: ModelAdapter
   subAgents: SubAgentManager
+  plan: PlanManager
   messages: ChatMessage[]
   cwd: string
   permissions: PermissionManager
@@ -972,6 +975,7 @@ async function resumeSession(
   loaded: ChatMessage[],
 ): Promise<void> {
   args.sessionId = sessionId
+  args.plan.reset(sessionId)
   const systemContent =
     args.messages[0]?.role === 'system' ? args.messages[0].content : ''
   await refreshSystemPrompt(args)
@@ -1293,6 +1297,7 @@ async function handleInput(
 
   if (input === '/new') {
     args.sessionId = crypto.randomUUID().slice(0, 8)
+    args.plan.reset(args.sessionId)
     args.alreadySavedCount = 0
     args.contextCollapseState = createContextCollapseState()
     state.transcript = []
@@ -1316,6 +1321,7 @@ async function handleInput(
       return false
     }
     args.sessionId = newId
+    args.plan.reset(newId)
     args.alreadySavedCount = args.messages.length - 1
     args.contextCollapseState = createContextCollapseState()
     state.transcriptScrollOffset = 0
@@ -1347,6 +1353,7 @@ async function handleInput(
   const localCommandResult = await tryHandleLocalCommand(input, {
     cwd: args.cwd,
     tools: args.tools,
+    plan: args.plan,
     permissionSummary: args.permissions.getSummary(),
   })
   if (localCommandResult !== null) {
@@ -1403,6 +1410,7 @@ async function handleInput(
     const nextMessages = await runAgentTurn({
       model: args.model,
       tools: args.tools,
+      plan: args.plan,
       messages: args.messages,
       cwd: args.cwd,
       permissions: args.permissions,
@@ -1542,7 +1550,10 @@ async function handleInput(
         const pending = pendingToolEntries.get(toolName) ?? []
         const entryId = pending.shift()
         pendingToolEntries.set(toolName, pending)
-        if (entryId !== undefined) {
+        if (entryId !== undefined && toolName === 'update_plan' && !isError) {
+          state.recentTools.push({ name: toolName, status: 'success' })
+          updateToolEntry(state, entryId, 'success', formatPlan(args.plan.getSnapshot()))
+        } else if (entryId !== undefined) {
           const aggregated = aggregatedEditByEntryId.get(entryId)
           if (aggregated && aggregated.toolName === toolName) {
             aggregated.completed += 1
@@ -1707,6 +1718,7 @@ export async function runTtyApp(args: TtyAppArgs): Promise<void> {
   let scheduleRender = renderNow
   scheduleRender = createRenderScheduler(renderNow)
   const unsubscribeSubAgents = permissionArgs.subAgents.subscribe(scheduleRender)
+  const unsubscribePlan = permissionArgs.plan.subscribe(scheduleRender)
   await permissionArgs.permissions.whenReady()
   if (
     permissionArgs.messages.length === 0 ||
@@ -1791,6 +1803,7 @@ export async function runTtyApp(args: TtyAppArgs): Promise<void> {
       clearInterval(welcomeAnimationTimer)
       clearInterval(inputHintTimer)
       unsubscribeSubAgents()
+      unsubscribePlan()
       process.stdin.off('data', onData)
       process.stdin.off('end', onEnd)
       process.stdin.off('close', onClose)

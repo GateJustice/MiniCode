@@ -14,6 +14,7 @@ import { summarizeMcpServers } from './mcp-status.js'
 import { MockModelAdapter } from './mock-model.js'
 import { PermissionManager } from './permissions.js'
 import { buildSystemPrompt } from './prompt.js'
+import { PlanManager } from './plan/manager.js'
 import {
   createDefaultToolRegistry,
   hydrateMcpTools,
@@ -71,9 +72,12 @@ async function main(): Promise<void> {
     runtime = null
   }
 
+  let sessionId = crypto.randomUUID().slice(0, 8)
+  const plan = new PlanManager(sessionId)
   const tools = await createDefaultToolRegistry({
     cwd,
     runtime,
+    plan,
   })
   const mcpHydration = hydrateMcpTools({
     cwd,
@@ -120,13 +124,13 @@ async function main(): Promise<void> {
 
   try {
     if (isInteractiveTerminal) {
-      let sessionId = crypto.randomUUID().slice(0, 8)
       let resolvedResumeTarget = resumeTarget
 
       if (forkTarget) {
         const forkedId = await forkSession(cwd, forkTarget)
         if (forkedId) {
           sessionId = forkedId
+          plan.reset(sessionId)
           resolvedResumeTarget = forkedId
         } else {
           console.error(`Session ${forkTarget} not found or empty.`)
@@ -138,6 +142,7 @@ async function main(): Promise<void> {
         tools,
         model,
         subAgents,
+        plan,
         messages,
         cwd,
         permissions,
@@ -227,6 +232,7 @@ async function main(): Promise<void> {
         const localCommandResult = await tryHandleLocalCommand(input, {
           cwd,
           tools,
+          plan,
           permissionSummary: permissions.getSummary(),
         })
         if (localCommandResult !== null) {
@@ -257,6 +263,7 @@ async function main(): Promise<void> {
         messages = await runAgentTurn({
           model,
           tools,
+          plan,
           messages,
           cwd,
           permissions,
