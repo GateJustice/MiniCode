@@ -46,6 +46,7 @@ This document carries the manual-style content that used to live in the main REA
 - `web_fetch`
 - `web_search`
 - `ask_user`
+- `update_plan` (root agent only)
 - `load_skill`
 - `list_mcp_resources`
 - `read_mcp_resource`
@@ -163,6 +164,7 @@ MINI_CODE_MODEL_MODE=mock npm run dev
 
 - `/help`
 - `/tools`
+- `/plan`
 - `/skills`
 - `/mcp`
 - `/status`
@@ -171,6 +173,20 @@ MINI_CODE_MODEL_MODE=mock npm run dev
 - `/model`
 - `/model <name>`
 - `/config-paths`
+
+### Plan / Todo (in-memory MVP)
+
+Ask the agent to keep a checklist for a multi-step task, for example:
+
+```text
+Inspect the search implementation and outline its test coverage. Use update_plan to track the steps; do not modify files.
+```
+
+`update_plan` replaces the complete Todo list. Existing items carry their returned IDs; new items omit `id`. The same tool can add, rename, remove, reorder, complete, and reopen items. An optional `explanation` describes the adjustment. Statuses are `pending` (`[ ]`), `in_progress` (`[>]`, Active), and `completed` (`[x]`). At most one item may be Active; invalid updates leave the current plan unchanged. An empty list clears the plan, while a fully completed list remains visible.
+
+Use `/plan` to view the list without calling the model. Successful updates also show a checklist in the TUI transcript. The latest plan is added to every root model request, including after context compression; read-only sub-agents cannot update it. A plan does not schedule work, and a normal final response still ends the turn even when Todos remain unfinished.
+
+This first stage keeps only the current session's plan in memory. Restarting, `/new`, `/resume`, or `/fork` starts an empty plan; older tool messages may remain in conversation history but do not restore plan state. `/compact` and context projection keep the live plan. Manual editing commands, selectable Todo controls, and plan persistence are deferred to the next Plan stage.
 
 ### Terminal interaction
 
