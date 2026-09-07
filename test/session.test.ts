@@ -528,6 +528,20 @@ describe('session persistence', () => {
     assert.equal(transcript![2]!.kind, 'tool')
   })
 
+  it('restores real tool results and never labels cancelled or missing results as successful', async () => {
+    const cwd = path.join(testDir, 'cancelled-tools')
+    const messages: ChatMessage[] = [{ role: 'system', content: 'System' }]
+    for (const id of ['done', 'cancelled', 'missing']) {
+      messages.push({ role: 'assistant_tool_call', toolUseId: id, toolName: 'write_file', input: { path: `${id}.txt` } })
+    }
+    messages.push({ role: 'tool_result', toolUseId: 'done', toolName: 'write_file', content: 'Applied', isError: false })
+    messages.push({ role: 'tool_result', toolUseId: 'cancelled', toolName: 'write_file', content: 'Cancelled before execution.', isError: true })
+    await saveSession(cwd, 'cancelled-result', messages, 0)
+    const entries = (await loadTranscript(cwd, 'cancelled-result'))!.filter(entry => entry.kind === 'tool')
+    assert.deepEqual(entries.map(entry => entry.status), ['success', 'error', 'error'])
+    assert.deepEqual(entries.map(entry => entry.body), ['Applied', 'Cancelled before execution.', 'No saved result for this tool call.'])
+  })
+
   it('loadTranscript returns null for nonexistent session', async () => {
     const cwd = path.join(testDir, 'no-tx')
     const loaded = await loadTranscript(cwd, 'nonexist')
